@@ -84,7 +84,18 @@ const translations = {
     home: 'Главная',
     editPhoto: 'Редактировать фото',
     saveChanges: 'Сохранить изменения',
-    saving: 'Сохранение...'
+    saving: 'Сохранение...',
+    zoom: 'Масштаб',
+    filters: 'Фильтры',
+    original: 'Оригинал',
+    grayscale: 'Ч/Б',
+    sepia: 'Сепия',
+    contrast: 'Контраст',
+    brightness: 'Яркость',
+    blur: 'Размытие',
+    vintage: 'Винтаж',
+    cool: 'Холодный',
+    warm: 'Тёплый'
   },
   en: {
     appTitle: 'PHOTOBANK',
@@ -141,7 +152,18 @@ const translations = {
     home: 'Home',
     editPhoto: 'Edit Photo',
     saveChanges: 'Save Changes',
-    saving: 'Saving...'
+    saving: 'Saving...',
+    zoom: 'Zoom',
+    filters: 'Filters',
+    original: 'Original',
+    grayscale: 'B&W',
+    sepia: 'Sepia',
+    contrast: 'Contrast',
+    brightness: 'Brightness',
+    blur: 'Blur',
+    vintage: 'Vintage',
+    cool: 'Cool',
+    warm: 'Warm'
   }
 };
 
@@ -1246,6 +1268,11 @@ function UploadForm({
   const [tagInput, setTagInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
+  // Zoom & filters
+  const [zoom, setZoom] = useState(1);
+  const [filter, setFilter] = useState('none');
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const selectedFile = acceptedFiles[0];
     if (selectedFile) {
@@ -1253,6 +1280,8 @@ function UploadForm({
       const reader = new FileReader();
       reader.onload = () => {
         setPreview(reader.result as string);
+        setZoom(1);
+        setFilter('none');
       };
       reader.readAsDataURL(selectedFile);
     }
@@ -1275,12 +1304,64 @@ function UploadForm({
     setTags(tags.filter(t => t !== tagToRemove));
   };
 
+  const getFilterStyle = () => {
+    const filters: Record<string, string> = {
+      none: 'none',
+      grayscale: 'grayscale(100%)',
+      sepia: 'sepia(100%)',
+      contrast: 'contrast(150%)',
+      brightness: 'brightness(130%)',
+      blur: 'blur(2px)',
+      vintage: 'sepia(50%) contrast(120%) brightness(90%)',
+      cool: 'hue-rotate(180deg) saturate(80%)',
+      warm: 'sepia(30%) saturate(140%)'
+    };
+    return filters[filter] || 'none';
+  };
+
+  const applyFilterToCanvas = async () => {
+    if (!preview || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    return new Promise<string>((resolve) => {
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Применяем фильтры
+        ctx.filter = getFilterStyle();
+
+        // Масштабирование с центрированием
+        const scale = zoom;
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        const offsetX = (img.width - scaledWidth) / 2;
+        const offsetY = (img.height - scaledHeight) / 2;
+
+        ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+
+        // Получаем base64
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = preview;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!preview || !token) return;
 
     setIsUploading(true);
     try {
+      // Применяем фильтры через canvas
+      const filteredImage = await applyFilterToCanvas();
+
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: {
@@ -1288,7 +1369,7 @@ function UploadForm({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          url: preview,
+          url: filteredImage,
           title,
           description,
           tags,
@@ -1322,15 +1403,79 @@ function UploadForm({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="relative aspect-square rounded-2xl overflow-hidden bg-black">
-            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-            <button
-              type="button"
-              onClick={() => { setFile(null); setPreview(null); }}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center hover:bg-black/70 transition-colors"
-            >
-              <X size={16} />
-            </button>
+          <div className="space-y-4">
+            {/* Preview with filters */}
+            <div className="relative aspect-square rounded-2xl overflow-hidden bg-black">
+              <img
+                src={preview}
+                alt="Preview"
+                className="w-full h-full object-cover transition-transform duration-200"
+                style={{
+                  transform: `scale(${zoom})`,
+                  filter: getFilterStyle()
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => { setFile(null); setPreview(null); setZoom(1); setFilter('none'); }}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center hover:bg-black/70 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Zoom slider */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/30">{t('zoom')}</label>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-white/40 w-8">1x</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                />
+                <span className="text-xs text-white/40 w-8 text-right">{zoom.toFixed(1)}x</span>
+              </div>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/30">{t('filters')}</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'none', label: t('original') },
+                  { key: 'grayscale', label: t('grayscale') },
+                  { key: 'sepia', label: t('sepia') },
+                  { key: 'contrast', label: t('contrast') },
+                  { key: 'brightness', label: t('brightness') },
+                  { key: 'vintage', label: t('vintage') },
+                  { key: 'cool', label: t('cool') },
+                  { key: 'warm', label: t('warm') },
+                  { key: 'blur', label: t('blur') }
+                ].map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFilter(f.key)}
+                    className={cn(
+                      "px-2 py-2 rounded-lg text-xs font-medium transition-all",
+                      filter === f.key
+                        ? "bg-orange-600 text-white"
+                        : "bg-white/5 border border-white/10 text-white/60 hover:bg-white/10"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Hidden canvas for processing */}
+            <canvas ref={canvasRef} className="hidden" />
           </div>
 
           <div className="space-y-4">
