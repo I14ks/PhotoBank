@@ -1,0 +1,118 @@
+/**
+ * Copyright (c) RTU MIREA.
+ *
+ * Custom CSS styles for Docusaurus.
+ */
+
+:root {
+  --ifm-color-primary: #ea580c;
+  --ifm-color-primary-dark: #c2410c;
+  --ifm-color-primary-darker: #9a3412;
+  --ifm-color-primary-darkest: #7c2d12;
+  --ifm-color-primary-light: #f97316;
+  --ifm-color-primary-lighter: #fb923c;
+  --ifm-color-primary-lightest: #fdba74;
+  --ifm-code-font-size: 95%;
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --ifm-heading-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+[data-theme='dark'] {
+  --ifm-background-color: #0a0a0a;
+  --ifm-background-surface-color: #1a1a1a;
+  --ifm-navbar-background-color: #0a0a0a;
+  --ifm-footer-background-color: #0a0a0a;
+}
+
+[data-theme='light'] {
+  --ifm-background-color: #f9fafb;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #ffffff;
+}
+
+.navbar {
+  backdrop-filter: blur(8px);
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, #7c2d12 100%);
+  color: white;
+}
+
+.hero__title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.hero__subtitle {
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.menu__link--active {
+  font-weight: 600;
+}
+
+.card {
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.15);
+}
+
+/* Wiki-style styling */
+.wiki-toc {
+  background: var(--ifm-background-surface-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+}
+
+.wiki-toc h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.wiki-toc ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.wiki-toc li {
+  margin: 8px 0;
+}
+
+.wiki-toc a {
+  color: var(--ifm-color-primary);
+  text-decoration: none;
+}
+
+.wiki-toc a:hover {
+  text-decoration: underline;
+}
+
+/* Code block styling */
+.prism-code {
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* Sidebar styling */
+.menu {
+  padding: 12px;
+}
+
+.menu__list-item-collapsible {
+  border-radius: 6px;
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
