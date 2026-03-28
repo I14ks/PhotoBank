@@ -61,6 +61,9 @@ images_db = [
     }
 ]
 
+# Избранные фото (user_id -> [image_ids])
+favorites_db = {}
+
 # Pydantic модели
 class UserCreate(BaseModel):
     username: str
@@ -87,6 +90,7 @@ class Image(BaseModel):
     author_id: str
     tags: List[str]
     publishDate: str
+    isLiked: bool = False
 
 class ImageCreate(BaseModel):
     url: str
@@ -94,11 +98,19 @@ class ImageCreate(BaseModel):
     description: str
     tags: List[str]
 
+class ImageUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+class LikeAction(BaseModel):
+    image_id: str
+    is_liked: bool
+
 # Security
 security = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
-    # Используем SHA-256 с солью для простоты
     salt = "photobank-salt-2026"
     return hashlib.sha256((password + salt).encode()).hexdigest()
 
@@ -124,6 +136,20 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         return username
     except jwt.PyJWTError as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+
+async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials is None:
+        return None
+    
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        return username
+    except jwt.PyJWTError:
+        return None
 
 # Эндпоинты авторизации
 @app.post("/register", response_model=UserResponse)
@@ -160,17 +186,27 @@ async def get_me(current_user: str = Depends(get_current_user)):
 
 # Эндпоинты изображений
 @app.get("/images", response_model=List[Image])
-async def get_images(search: Optional[str] = Query(None)):
+async def get_images(search: Optional[str] = Query(None), current_user: Optional[str] = Depends(get_current_user_optional)):
+    result = []
+    for img in images_db:
+        img_copy = img.copy()
+        if current_user:
+            user_favorites = favorites_db.get(current_user, [])
+            img_copy["isLiked"] = img["id"] in user_favorites
+        else:
+            img_copy["isLiked"] = False
+        result.append(img_copy)
+    
     if search:
         query = search.lower()
         filtered = [
-            img for img in images_db
+            img for img in result
             if query in img["title"].lower() or
                query in img["description"].lower() or
                any(query in tag.lower() for tag in img["tags"])
         ]
         return filtered
-    return images_db
+    return result
 
 @app.post("/upload", response_model=Image)
 async def upload_image(
@@ -188,7 +224,7 @@ async def upload_image(
         "publishDate": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     }
     images_db.insert(0, new_image)
-    return new_image
+    return Image(**new_image, isLiked=False)
 
 @app.delete("/images/{image_id}")
 async def delete_image(image_id: str, current_user: str = Depends(get_current_user)):
@@ -200,9 +236,79 @@ async def delete_image(image_id: str, current_user: str = Depends(get_current_us
             return {"message": "Image deleted"}
     raise HTTPException(status_code=404, detail="Image not found")
 
+@app.put("/images/{image_id}", response_model=Image)
+async def update_image(
+    image_id: str,
+    image_data: ImageUpdate,
+    current_user: str = Depends(get_current_user)
+):
+    for img in images_db:
+        if img["id"] == image_id:
+            if img["author_id"] != current_user:
+                raise HTTPException(status_code=403, detail="Not authorized to edit this image")
+            
+            if image_data.title is not None:
+                img["title"] = image_data.title
+            if image_data.description is not None:
+                img["description"] = image_data.description
+            if image_data.tags is not None:
+                img["tags"] = image_data.tags
+            
+            img_copy = img.copy()
+            user_favorites = favorites_db.get(current_user, [])
+            img_copy["isLiked"] = img["id"] in user_favorites
+            return Image(**img_copy)
+    
+    raise HTTPException(status_code=404, detail="Image not found")
+
 @app.get("/user/{username}/images", response_model=List[Image])
-async def get_user_images(username: str):
-    return [img for img in images_db if img["author_id"] == username]
+async def get_user_images(username: str, current_user: Optional[str] = Depends(get_current_user_optional)):
+    result = []
+    for img in images_db:
+        if img["author_id"] == username:
+            img_copy = img.copy()
+            if current_user:
+                user_favorites = favorites_db.get(current_user, [])
+                img_copy["isLiked"] = img["id"] in user_favorites
+            else:
+                img_copy["isLiked"] = False
+            result.append(img_copy)
+    return result
+
+# Эндпоинты избранного
+@app.post("/like")
+async def like_image(
+    action: LikeAction,
+    current_user: str = Depends(get_current_user)
+):
+    if current_user not in favorites_db:
+        favorites_db[current_user] = []
+    
+    if action.is_liked:
+        if action.image_id not in favorites_db[current_user]:
+            favorites_db[current_user].append(action.image_id)
+    else:
+        if action.image_id in favorites_db[current_user]:
+            favorites_db[current_user].remove(action.image_id)
+    
+    return {"success": True, "is_liked": action.is_liked}
+
+@app.get("/favorites", response_model=List[Image])
+async def get_favorites(current_user: str = Depends(get_current_user)):
+    user_favorites = favorites_db.get(current_user, [])
+    result = []
+    for img in images_db:
+        if img["id"] in user_favorites:
+            img_copy = img.copy()
+            img_copy["isLiked"] = True
+            result.append(img_copy)
+    return result
+
+@app.get("/user/{username}/favorites", response_model=List[Image])
+async def get_user_favorites(username: str, current_user: str = Depends(get_current_user)):
+    if username != current_user:
+        raise HTTPException(status_code=403, detail="Not authorized to view this user's favorites")
+    return await get_favorites(current_user)
 
 if __name__ == "__main__":
     import uvicorn

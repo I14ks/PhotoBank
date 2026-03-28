@@ -16,7 +16,9 @@ import {
   LogIn,
   Sun,
   Moon,
-  Globe
+  Globe,
+  Bookmark,
+  Edit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -66,7 +68,8 @@ const translations = {
     from: 'от',
     published: 'Опубликовано',
     download: 'Скачать',
-    favorites: 'В избранное',
+    favorites: 'Избранное',
+    addToFavorites: 'В избранное',
     nature: 'Природа',
     architecture: 'Архитектура',
     people: 'Люди',
@@ -74,7 +77,14 @@ const translations = {
     art: 'Искусство',
     delete: 'Удалить',
     myPhotos: 'Мои фото',
-    allPhotos: 'Все фото'
+    allPhotos: 'Все фото',
+    myFavorites: 'Мои избранные',
+    emptyFavorites: 'У вас пока нет избранных фото',
+    browsePhotos: 'Смотреть все фото',
+    home: 'Главная',
+    editPhoto: 'Редактировать фото',
+    saveChanges: 'Сохранить изменения',
+    saving: 'Сохранение...'
   },
   en: {
     appTitle: 'PHOTOBANK',
@@ -115,7 +125,8 @@ const translations = {
     from: 'from',
     published: 'Published',
     download: 'Download',
-    favorites: 'Add to favorites',
+    favorites: 'Favorites',
+    addToFavorites: 'Add to favorites',
     nature: 'Nature',
     architecture: 'Architecture',
     people: 'People',
@@ -123,7 +134,14 @@ const translations = {
     art: 'Art',
     delete: 'Delete',
     myPhotos: 'My Photos',
-    allPhotos: 'All Photos'
+    allPhotos: 'All Photos',
+    myFavorites: 'My Favorites',
+    emptyFavorites: 'You have no favorite photos yet',
+    browsePhotos: 'Browse all photos',
+    home: 'Home',
+    editPhoto: 'Edit Photo',
+    saveChanges: 'Save Changes',
+    saving: 'Saving...'
   }
 };
 
@@ -159,16 +177,20 @@ interface Photo {
   author_id: string;
   tags: string[];
   publishDate: string;
+  isLiked: boolean;
 }
 
 interface User {
   username: string;
 }
 
+type Page = 'home' | 'favorites';
+
 // ==================== Main App ====================
 export default function App() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lang') as Lang) || 'ru');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') as 'light' | 'dark') || 'dark');
+  const [currentPage, setCurrentPage] = useState<Page>('home');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -181,6 +203,9 @@ export default function App() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [filterMode, setFilterMode] = useState<'all' | 'mine'>('all');
+  const [likedPhotos, setLikedPhotos] = useState<Set<string>>(new Set());
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
 
   useEffect(() => {
     localStorage.setItem('lang', lang);
@@ -212,30 +237,48 @@ export default function App() {
   const fetchPhotos = useCallback(async (query = '') => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/images${query ? `?search=${encodeURIComponent(query)}` : ''}`);
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const res = await fetch(`/api/images${query ? `?search=${encodeURIComponent(query)}` : ''}`, { headers });
       const data = await res.json();
       setPhotos(data);
+      const liked = new Set(data.filter((p: Photo) => p.isLiked).map((p: Photo) => p.id));
+      setLikedPhotos(liked);
     } catch (err) {
       console.error('Failed to fetch photos', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [token]);
 
-  useEffect(() => {
-    if (filterMode === 'mine' && currentUser) {
-      fetchUserPhotos(currentUser.username);
-    } else {
-      fetchPhotos(searchQuery);
-    }
-  }, [filterMode, currentUser]);
-
-  const fetchUserPhotos = async (username: string) => {
+  const fetchFavorites = useCallback(async () => {
+    if (!token) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/user/${username}/images`);
+      const res = await fetch('/api/favorites', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       const data = await res.json();
       setPhotos(data);
+      const liked = new Set(data.map((p: Photo) => p.id));
+      setLikedPhotos(liked);
+    } catch (err) {
+      console.error('Failed to fetch favorites', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
+  const fetchUserPhotos = async (username: string) => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/user/${username}/images`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setPhotos(data);
+      const liked = new Set(data.filter((p: Photo) => p.isLiked).map((p: Photo) => p.id));
+      setLikedPhotos(liked);
     } catch (err) {
       console.error('Failed to fetch user photos', err);
     } finally {
@@ -243,9 +286,20 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (currentPage === 'favorites') {
+      fetchFavorites();
+    } else if (filterMode === 'mine' && currentUser) {
+      fetchUserPhotos(currentUser.username);
+    } else {
+      fetchPhotos(searchQuery);
+    }
+  }, [currentPage, filterMode, currentUser, searchQuery]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setFilterMode('all');
+    setCurrentPage('home');
     fetchPhotos(searchQuery);
   };
 
@@ -255,6 +309,8 @@ export default function App() {
     setToken(null);
     setCurrentUser(null);
     setFilterMode('all');
+    setCurrentPage('home');
+    setLikedPhotos(new Set());
   };
 
   const handleAuthSuccess = (user: User, newToken: string) => {
@@ -263,6 +319,7 @@ export default function App() {
     setToken(newToken);
     setCurrentUser(user);
     setIsAuthModalOpen(false);
+    fetchPhotos();
   };
 
   const handleDeletePhoto = async (photoId: string) => {
@@ -274,9 +331,80 @@ export default function App() {
       });
       if (res.ok) {
         setPhotos(prev => prev.filter(p => p.id !== photoId));
+        if (selectedPhoto?.id === photoId) {
+          setSelectedPhoto(null);
+        }
       }
     } catch (err) {
       console.error('Failed to delete photo', err);
+    }
+  };
+
+  const handleUpdatePhoto = async (photoId: string, updates: { title?: string; description?: string; tags?: string[] }) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/images/${photoId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setPhotos(prev => prev.map(p => p.id === photoId ? updated : p));
+        if (selectedPhoto?.id === photoId) {
+          setSelectedPhoto(updated);
+        }
+        setIsEditModalOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to update photo', err);
+    }
+  };
+
+  const handleLikeToggle = async (photoId: string, currentIsLiked: boolean) => {
+    if (!token) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    const newIsLiked = !currentIsLiked;
+
+    // Оптимистичное обновление
+    setPhotos(prev => prev.map(p =>
+      p.id === photoId ? { ...p, isLiked: newIsLiked } : p
+    ));
+
+    if (newIsLiked) {
+      setLikedPhotos(prev => new Set(prev).add(photoId));
+    } else {
+      setLikedPhotos(prev => {
+        const next = new Set(prev);
+        next.delete(photoId);
+        return next;
+      });
+    }
+
+    try {
+      await fetch('/api/like', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          image_id: photoId,
+          is_liked: newIsLiked
+        })
+      });
+    } catch (err) {
+      console.error('Failed to like photo', err);
+      // Откат при ошибке
+      setPhotos(prev => prev.map(p =>
+        p.id === photoId ? { ...p, isLiked: currentIsLiked } : p
+      ));
     }
   };
 
@@ -301,10 +429,10 @@ export default function App() {
         )}>
           <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20">
+              <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20 cursor-pointer" onClick={() => setCurrentPage('home')}>
                 <Camera className="text-white" size={24} />
               </div>
-              <h1 className="text-2xl font-bold tracking-tighter">{t('appTitle')}</h1>
+              <h1 className="text-2xl font-bold tracking-tighter cursor-pointer" onClick={() => setCurrentPage('home')}>{t('appTitle')}</h1>
             </div>
 
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
@@ -313,7 +441,7 @@ export default function App() {
                   type="text"
                   placeholder={t('searchPlaceholder')}
                   className={cn(
-                    "w-full rounded-full py-2.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-600/50 transition-all placeholder:text-white/30",
+                    "w-full rounded-full py-2.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-600/50 transition-all",
                     theme === 'dark' ? "bg-white/5 border border-white/10 placeholder:text-gray-400" : "bg-gray-100 border border-gray-200 placeholder:text-gray-500"
                   )}
                   value={searchQuery}
@@ -395,7 +523,7 @@ export default function App() {
                         onClick={() => { setTheme('dark'); setShowThemeMenu(false); }}
                         className={cn(
                           "w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors",
-                          theme === 'dark' ? "bg-orange-600 text-white" : theme === 'dark' ? "hover:bg-white/5" : "hover:bg-gray-100"
+                          theme === 'dark' ? "bg-orange-600 text-white" : "hover:bg-gray-100"
                         )}
                       >
                         <Moon size={16} /> Dark
@@ -404,7 +532,7 @@ export default function App() {
                         onClick={() => { setTheme('light'); setShowThemeMenu(false); }}
                         className={cn(
                           "w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors",
-                          theme === 'light' ? "bg-orange-600 text-white" : theme === 'dark' ? "hover:bg-white/5" : "hover:bg-gray-100"
+                          theme === 'light' ? "bg-orange-600 text-white" : "hover:bg-gray-100"
                         )}
                       >
                         <Sun size={16} /> Light
@@ -413,6 +541,23 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Favorites Link */}
+              <button
+                onClick={() => setCurrentPage('favorites')}
+                className={cn(
+                  "relative w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                  currentPage === 'favorites' ? "bg-orange-600 text-white" : theme === 'dark' ? "border border-white/10 hover:bg-white/5" : "border border-gray-200 hover:bg-gray-100"
+                )}
+                title={t('favorites')}
+              >
+                <Bookmark size={20} />
+                {likedPhotos.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-600 rounded-full text-xs flex items-center justify-center text-white font-bold">
+                    {likedPhotos.size}
+                  </span>
+                )}
+              </button>
 
               {currentUser ? (
                 <>
@@ -455,167 +600,196 @@ export default function App() {
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            <img
-              src="https://picsum.photos/seed/photobank/1920/1080?blur=10"
-              alt="Background"
-              className="w-full h-full object-cover opacity-30"
-              referrerPolicy="no-referrer"
-            />
-            <div className={cn(
-              "absolute inset-0 bg-gradient-to-b",
-              theme === 'dark' ? "from-transparent to-[#0A0A0A]" : "from-transparent to-gray-50"
-            )} />
-          </div>
+        {/* Page Content */}
+        {currentPage === 'home' ? (
+          <>
+            {/* Hero Section */}
+            <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-0 z-0">
+                <img
+                  src="https://picsum.photos/seed/photobank/1920/1080?blur=10"
+                  alt="Background"
+                  className="w-full h-full object-cover opacity-30"
+                  referrerPolicy="no-referrer"
+                />
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-b",
+                  theme === 'dark' ? "from-transparent to-[#0A0A0A]" : "from-transparent to-gray-50"
+                )} />
+              </div>
 
-          <div className="relative z-10 text-center max-w-3xl px-4">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-5xl md:text-7xl font-black mb-6 tracking-tight"
-            >
-              {lang === 'ru' ? 'МИР В ' : 'WORLD IN '}
-              <span className="text-orange-600">{lang === 'ru' ? 'ОБЪЕКТИВЕ' : 'LENS'}</span>
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={cn("text-lg mb-8", theme === 'dark' ? "text-white/60" : "text-gray-600")}
-            >
-              {t('heroSubtitle')}
-            </motion.p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {[
-                { key: 'nature', ru: 'Природа', en: 'Nature' },
-                { key: 'architecture', ru: 'Архитектура', en: 'Architecture' },
-                { key: 'people', ru: 'Люди', en: 'People' },
-                { key: 'technology', ru: 'Технологии', en: 'Technology' },
-                { key: 'art', ru: 'Искусство', en: 'Art' }
-              ].map((tag) => (
-                <button
-                  key={tag.key}
-                  onClick={() => { setSearchQuery(lang === 'ru' ? tag.ru : tag.en); fetchPhotos(lang === 'ru' ? tag.ru : tag.en); }}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full border text-sm transition-colors",
-                    theme === 'dark' ? "border-white/10 bg-white/5 hover:bg-white/10" : "border-gray-200 bg-gray-100 hover:bg-gray-200"
-                  )}
+              <div className="relative z-10 text-center max-w-3xl px-4">
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-5xl md:text-7xl font-black mb-6 tracking-tight"
                 >
-                  {lang === 'ru' ? tag.ru : tag.en}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+                  {lang === 'ru' ? 'МИР В ' : 'WORLD IN '}
+                  <span className="text-orange-600">{lang === 'ru' ? 'ОБЪЕКТИВЕ' : 'LENS'}</span>
+                </motion.h2>
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className={cn("text-lg mb-8", theme === 'dark' ? "text-white/60" : "text-gray-600")}
+                >
+                  {t('heroSubtitle')}
+                </motion.p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {[
+                    { key: 'nature', ru: 'Природа', en: 'Nature' },
+                    { key: 'architecture', ru: 'Архитектура', en: 'Architecture' },
+                    { key: 'people', ru: 'Люди', en: 'People' },
+                    { key: 'technology', ru: 'Технологии', en: 'Technology' },
+                    { key: 'art', ru: 'Искусство', en: 'Art' }
+                  ].map((tag) => (
+                    <button
+                      key={tag.key}
+                      onClick={() => { setSearchQuery(lang === 'ru' ? tag.ru : tag.en); fetchPhotos(lang === 'ru' ? tag.ru : tag.en); }}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full border text-sm transition-colors",
+                        theme === 'dark' ? "border-white/10 bg-white/5 hover:bg-white/10" : "border-gray-200 bg-gray-100 hover:bg-gray-200"
+                      )}
+                    >
+                      {lang === 'ru' ? tag.ru : tag.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <h3 className="text-xl font-bold flex items-center gap-2">
-                <Layers className="text-orange-600" size={20} />
-                {t('recentPublications')}
-              </h3>
-              {currentUser && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setFilterMode('all')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm transition-colors",
-                      filterMode === 'all' ? "bg-orange-600 text-white" : theme === 'dark' ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
-                    )}
-                  >
-                    {t('allPhotos')}
-                  </button>
-                  <button
-                    onClick={() => setFilterMode('mine')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm transition-colors",
-                      filterMode === 'mine' ? "bg-orange-600 text-white" : theme === 'dark' ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
-                    )}
-                  >
-                    {t('myPhotos')}
-                  </button>
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 py-12">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Layers className="text-orange-600" size={20} />
+                    {t('recentPublications')}
+                  </h3>
+                  {currentUser && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setFilterMode('all')}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-sm transition-colors",
+                          filterMode === 'all' ? "bg-orange-600 text-white" : theme === 'dark' ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
+                        )}
+                      >
+                        {t('allPhotos')}
+                      </button>
+                      <button
+                        onClick={() => setFilterMode('mine')}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-sm transition-colors",
+                          filterMode === 'mine' ? "bg-orange-600 text-white" : theme === 'dark' ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
+                        )}
+                      >
+                        {t('myPhotos')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button className={cn(
+                  "flex items-center gap-2 text-sm transition-colors",
+                  theme === 'dark' ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"
+                )}>
+                  <Filter size={16} />
+                  {t('filters')}
+                </button>
+              </div>
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className={cn("aspect-[4/3] rounded-2xl animate-pulse", theme === 'dark' ? "bg-white/5" : "bg-gray-200")} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <AnimatePresence mode="popLayout">
+                    {photos.map((photo) => (
+                      <PhotoCard
+                        key={photo.id}
+                        photo={photo}
+                        theme={theme}
+                        isLiked={likedPhotos.has(photo.id)}
+                        onLike={() => handleLikeToggle(photo.id, photo.isLiked)}
+                        onClick={() => setSelectedPhoto(photo)}
+                        onDelete={() => handleDeletePhoto(photo.id)}
+                        canDelete={currentUser?.username === photo.author_id}
+                        t={t}
+                      />
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
-            </div>
-            <button className={cn(
-              "flex items-center gap-2 text-sm transition-colors",
-              theme === 'dark' ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"
-            )}>
-              <Filter size={16} />
-              {t('filters')}
-            </button>
-          </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className={cn("aspect-[4/3] rounded-2xl animate-pulse", theme === 'dark' ? "bg-white/5" : "bg-gray-200")} />
-              ))}
+              {!isLoading && photos.length === 0 && (
+                <div className={cn("text-center py-20", theme === 'dark' ? "text-white/40" : "text-gray-500")}>
+                  <ImageIcon className={cn("mx-auto mb-4", theme === 'dark' ? "text-white/10" : "text-gray-200")} size={64} />
+                  <p className="text-lg">{t('nothingFound')}</p>
+                </div>
+              )}
+            </main>
+          </>
+        ) : (
+          /* Favorites Page */
+          <main className="max-w-7xl mx-auto px-4 py-12">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Bookmark className="text-orange-600" size={20} />
+                  {t('myFavorites')}
+                </h3>
+              </div>
+              <button
+                onClick={() => setCurrentPage('home')}
+                className={cn(
+                  "flex items-center gap-2 text-sm transition-colors",
+                  theme === 'dark' ? "text-white/60 hover:text-white" : "text-gray-600 hover:text-gray-900"
+                )}
+              >
+                <Search size={16} />
+                {t('browsePhotos')}
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              <AnimatePresence mode="popLayout">
-                {photos.map((photo) => (
-                  <motion.div
-                    layout
-                    key={photo.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    whileHover={{ y: -8 }}
-                    className={cn(
-                      "group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer transition-colors",
-                      theme === 'dark' ? "bg-white/5" : "bg-gray-100"
-                    )}
-                    onClick={() => setSelectedPhoto(photo)}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <h4 className="font-bold text-lg leading-tight mb-1">{photo.title}</h4>
-                          <p className="text-white/60 text-sm">@{photo.author}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          {currentUser && photo.author_id === currentUser.username && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeletePhoto(photo.id); }}
-                              className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center hover:bg-red-600 transition-colors"
-                            >
-                              <X size={18} />
-                            </button>
-                          )}
-                          <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
-                            <Heart size={18} />
-                          </button>
-                          <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
-                            <Download size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
+
+            {isLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className={cn("aspect-[4/3] rounded-2xl animate-pulse", theme === 'dark' ? "bg-white/5" : "bg-gray-200")} />
                 ))}
-              </AnimatePresence>
-            </div>
-          )}
-
-          {!isLoading && photos.length === 0 && (
-            <div className={cn("text-center py-20", theme === 'dark' ? "text-white/40" : "text-gray-500")}>
-              <ImageIcon className={cn("mx-auto mb-4", theme === 'dark' ? "text-white/10" : "text-gray-200")} size={64} />
-              <p className="text-lg">{t('nothingFound')}</p>
-            </div>
-          )}
-        </main>
+              </div>
+            ) : photos.length === 0 ? (
+              <div className={cn("text-center py-20", theme === 'dark' ? "text-white/40" : "text-gray-500")}>
+                <Bookmark className={cn("mx-auto mb-4", theme === 'dark' ? "text-white/10" : "text-gray-300")} size={64} />
+                <p className="text-lg mb-4">{t('emptyFavorites')}</p>
+                <button
+                  onClick={() => setCurrentPage('home')}
+                  className="px-6 py-3 bg-orange-600 text-white rounded-full font-semibold hover:bg-orange-500 transition-colors"
+                >
+                  {t('browsePhotos')}
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {photos.map((photo) => (
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    theme={theme}
+                    isLiked={true}
+                    onLike={() => handleLikeToggle(photo.id, true)}
+                    onClick={() => setSelectedPhoto(photo)}
+                    onDelete={() => handleDeletePhoto(photo.id)}
+                    canDelete={currentUser?.username === photo.author_id}
+                    t={t}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        )}
 
         {/* Footer */}
         <footer className={cn("border-t py-12 mt-20", theme === 'dark' ? "border-white/10" : "border-gray-200")}>
@@ -726,12 +900,22 @@ export default function App() {
                       <h3 className="text-2xl font-bold mb-1">{selectedPhoto.title}</h3>
                       <p className="text-white/60">{t('from')} {selectedPhoto.author}</p>
                     </div>
-                    <button
-                      onClick={() => setSelectedPhoto(null)}
-                      className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
-                    >
-                      <X size={24} />
-                    </button>
+                    <div className="flex gap-2">
+                      {currentUser?.username === selectedPhoto.author_id && (
+                        <button
+                          onClick={() => { setEditingPhoto(selectedPhoto); setIsEditModalOpen(true); }}
+                          className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors text-white/60 hover:text-white"
+                        >
+                          <Edit size={20} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedPhoto(null)}
+                        className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex-1 overflow-y-auto pr-2 space-y-6">
@@ -764,9 +948,17 @@ export default function App() {
                       <Download size={18} />
                       {t('download')}
                     </button>
-                    <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-3 rounded-xl font-bold hover:bg-white/10 transition-all">
-                      <Heart size={18} />
-                      {t('favorites')}
+                    <button
+                      onClick={() => handleLikeToggle(selectedPhoto.id, selectedPhoto.isLiked)}
+                      className={cn(
+                        "flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all",
+                        likedPhotos.has(selectedPhoto.id)
+                          ? "bg-orange-600 text-white hover:bg-orange-500"
+                          : "bg-white/5 border border-white/10 hover:bg-white/10 text-white"
+                      )}
+                    >
+                      <Heart size={18} fill={likedPhotos.has(selectedPhoto.id) ? "currentColor" : "none"} />
+                      {t('addToFavorites')}
                     </button>
                   </div>
                 </div>
@@ -774,8 +966,103 @@ export default function App() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Edit Modal */}
+        <AnimatePresence>
+          {isEditModalOpen && editingPhoto && (
+            <EditModal
+              photo={editingPhoto}
+              onClose={() => { setIsEditModalOpen(false); setEditingPhoto(null); }}
+              onSave={handleUpdatePhoto}
+              theme={theme}
+              lang={lang}
+              t={t}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </AppContext.Provider>
+  );
+}
+
+// ==================== Photo Card Component ====================
+function PhotoCard({
+  photo,
+  theme,
+  isLiked,
+  onLike,
+  onClick,
+  onDelete,
+  canDelete,
+  t
+}: {
+  photo: Photo;
+  theme: 'light' | 'dark';
+  isLiked: boolean;
+  onLike: () => void;
+  onClick: () => void;
+  onDelete: () => void;
+  canDelete: boolean;
+  t: (key: keyof typeof translations.ru) => string;
+}) {
+  return (
+    <motion.div
+      layout
+      key={photo.id}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      whileHover={{ y: -8 }}
+      className={cn(
+        "group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer transition-colors",
+        theme === 'dark' ? "bg-white/5" : "bg-gray-100"
+      )}
+      onClick={onClick}
+    >
+      <img
+        src={photo.url}
+        alt={photo.title}
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        referrerPolicy="no-referrer"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+        <div className="flex justify-between items-end">
+          <div>
+            <h4 className="font-bold text-lg leading-tight mb-1">{photo.title}</h4>
+            <p className="text-white/60 text-sm">@{photo.author}</p>
+          </div>
+          <div className="flex gap-2">
+            {canDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="w-10 h-10 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center hover:bg-red-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            )}
+            <button
+              onClick={(e) => { e.stopPropagation(); onLike(); }}
+              className={cn(
+                "w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center transition-colors",
+                isLiked ? "bg-orange-600 text-white" : "bg-white/10 hover:bg-white/20"
+              )}
+            >
+              <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+            </button>
+            <button className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-colors">
+              <Download size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Like indicator when not hovered */}
+      {isLiked && (
+        <div className="absolute top-4 right-4 w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center shadow-lg">
+          <Heart size={14} fill="white" className="text-white" />
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -1121,5 +1408,160 @@ function UploadForm({
         </button>
       </div>
     </form>
+  );
+}
+
+// ==================== Edit Modal Component ====================
+function EditModal({
+  photo,
+  onClose,
+  onSave,
+  theme,
+  lang,
+  t,
+}: {
+  photo: Photo;
+  onClose: () => void;
+  onSave: (photoId: string, updates: { title?: string; description?: string; tags?: string[] }) => void;
+  theme: 'light' | 'dark';
+  lang: Lang;
+  t: (key: keyof typeof translations.ru) => string;
+}) {
+  const [title, setTitle] = useState(photo.title);
+  const [description, setDescription] = useState(photo.description);
+  const [tags, setTags] = useState<string[]>(photo.tags);
+  const [tagInput, setTagInput] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const addTag = () => {
+    if (tagInput && !tags.includes(tagInput)) {
+      setTags([...tags, tagInput]);
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await onSave(photo.id, { title, description, tags });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative bg-[#111] border border-white/10 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl"
+      >
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-2xl font-bold">{t('editPhoto')}</h3>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="relative aspect-square rounded-2xl overflow-hidden bg-black">
+                <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" />
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">{t('title')}</label>
+                  <input
+                    type="text"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
+                    placeholder={t('titlePlaceholder')}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">{t('description')}</label>
+                  <textarea
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-600/50 h-24 resize-none"
+                    placeholder={t('descriptionPlaceholder')}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">{t('tags')}</label>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      type="text"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
+                      placeholder={t('addTag')}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    />
+                    <button
+                      type="button"
+                      onClick={addTag}
+                      className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map(tag => (
+                      <span key={tag} className="flex items-center gap-1 px-3 py-1 rounded-full bg-orange-600/10 border border-orange-600/20 text-sm text-orange-500">
+                        #{tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-white">
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl font-bold bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="flex-[2] py-3 rounded-xl font-bold bg-orange-600 text-white hover:bg-orange-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSaving ? <Loader2 className="animate-spin" size={20} /> : <Edit size={20} />}
+                {isSaving ? t('saving') : t('saveChanges')}
+              </button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
   );
 }
