@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Search, 
-  Upload, 
-  Image as ImageIcon, 
-  Heart, 
-  Download, 
-  User, 
-  X, 
-  Plus, 
+import {
+  Search,
+  Upload,
+  Image as ImageIcon,
+  Heart,
+  Download,
+  User,
+  X,
+  Plus,
   Filter,
   Camera,
   Layers,
-  Loader2
+  Loader2,
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -29,8 +31,13 @@ interface Photo {
   title: string;
   description: string;
   author: string;
+  author_id: string;
   tags: string[];
   publishDate: string;
+}
+
+interface User {
+  username: string;
 }
 
 export default function App() {
@@ -39,6 +46,20 @@ export default function App() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [token, setToken] = useState<string | null>(null);
+
+  // Загрузка токена из localStorage
+  useEffect(() => {
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setCurrentUser(JSON.parse(savedUser));
+    }
+  }, []);
 
   // Fetch photos
   const fetchPhotos = useCallback(async (query = '') => {
@@ -63,10 +84,25 @@ export default function App() {
     fetchPhotos(searchQuery);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setCurrentUser(null);
+  };
+
+  const handleAuthSuccess = (user: User, newToken: string) => {
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(user));
+    setToken(newToken);
+    setCurrentUser(user);
+    setIsAuthModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white font-sans selection:bg-orange-500 selection:text-white">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#0A0A0A]/80 backdrop-blur-md border-bottom border-white/10">
+      <header className="sticky top-0 z-40 bg-[#0A0A0A]/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-600/20">
@@ -77,9 +113,9 @@ export default function App() {
 
           <div className="hidden md:flex flex-1 max-w-xl mx-8">
             <form onSubmit={handleSearch} className="relative w-full">
-              <input 
-                type="text" 
-                placeholder="Поиск вдохновения..." 
+              <input
+                type="text"
+                placeholder="Поиск вдохновения..."
                 className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-orange-600/50 transition-all placeholder:text-white/30"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -89,16 +125,40 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-orange-500 hover:text-white transition-all active:scale-95"
-            >
-              <Upload size={18} />
-              <span className="hidden sm:inline">Загрузить</span>
-            </button>
-            <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-colors cursor-pointer">
-              <User size={20} />
-            </div>
+            {currentUser ? (
+              <>
+                <button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-orange-500 hover:text-white transition-all active:scale-95"
+                >
+                  <Upload size={18} />
+                  <span className="hidden sm:inline">Загрузить</span>
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-orange-600 flex items-center justify-center font-bold">
+                      {currentUser.username[0].toUpperCase()}
+                    </div>
+                    <span className="font-semibold">{currentUser.username}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500 transition-colors"
+                    title="Выйти"
+                  >
+                    <LogOut size={20} />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full font-semibold hover:bg-orange-500 hover:text-white transition-all active:scale-95"
+              >
+                <LogIn size={18} />
+                <span className="hidden sm:inline">Войти</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -106,24 +166,24 @@ export default function App() {
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src="https://picsum.photos/seed/photobank/1920/1080?blur=10" 
-            alt="Background" 
+          <img
+            src="https://picsum.photos/seed/photobank/1920/1080?blur=10"
+            alt="Background"
             className="w-full h-full object-cover opacity-30"
             referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0A0A0A]" />
         </div>
-        
+
         <div className="relative z-10 text-center max-w-3xl px-4">
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-7xl font-black mb-6 tracking-tight"
           >
             МИР В <span className="text-orange-600">ОБЪЕКТИВЕ</span>
           </motion.h2>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
@@ -133,7 +193,7 @@ export default function App() {
           </motion.p>
           <div className="flex flex-wrap justify-center gap-3">
             {['Природа', 'Архитектура', 'Люди', 'Технологии', 'Искусство'].map((tag) => (
-              <button 
+              <button
                 key={tag}
                 onClick={() => { setSearchQuery(tag); fetchPhotos(tag); }}
                 className="px-4 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-sm"
@@ -178,9 +238,9 @@ export default function App() {
                   className="group relative aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer bg-white/5"
                   onClick={() => setSelectedPhoto(photo)}
                 >
-                  <img 
-                    src={photo.url} 
-                    alt={photo.title} 
+                  <img
+                    src={photo.url}
+                    alt={photo.title}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
@@ -230,18 +290,31 @@ export default function App() {
         </div>
       </footer>
 
+      {/* Auth Modal */}
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <AuthModal
+            mode={authMode}
+            onClose={() => setIsAuthModalOpen(false)}
+            onSuccess={handleAuthSuccess}
+            onSwitchMode={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+            token={token}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Upload Modal */}
       <AnimatePresence>
         {isUploadModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsUploadModalOpen(false)}
               className="absolute inset-0 bg-black/90 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -250,7 +323,7 @@ export default function App() {
               <div className="p-8">
                 <div className="flex justify-between items-center mb-8">
                   <h3 className="text-2xl font-bold">Загрузить фото</h3>
-                  <button 
+                  <button
                     onClick={() => setIsUploadModalOpen(false)}
                     className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
                   >
@@ -258,11 +331,12 @@ export default function App() {
                   </button>
                 </div>
 
-                <UploadForm 
+                <UploadForm
+                  token={token}
                   onSuccess={(newPhoto) => {
                     setPhotos(prev => [newPhoto, ...prev]);
                     setIsUploadModalOpen(false);
-                  }} 
+                  }}
                 />
               </div>
             </motion.div>
@@ -274,23 +348,23 @@ export default function App() {
       <AnimatePresence>
         {selectedPhoto && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedPhoto(null)}
               className="absolute inset-0 bg-black/95 backdrop-blur-md"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               className="relative bg-[#111] border border-white/10 rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl"
             >
               <div className="flex-1 bg-black flex items-center justify-center overflow-hidden">
-                <img 
-                  src={selectedPhoto.url} 
-                  alt={selectedPhoto.title} 
+                <img
+                  src={selectedPhoto.url}
+                  alt={selectedPhoto.title}
                   className="max-w-full max-h-full object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -301,7 +375,7 @@ export default function App() {
                     <h3 className="text-2xl font-bold mb-1">{selectedPhoto.title}</h3>
                     <p className="text-white/60">от {selectedPhoto.author}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setSelectedPhoto(null)}
                     className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
                   >
@@ -353,10 +427,165 @@ export default function App() {
   );
 }
 
-function UploadForm({ 
-  onSuccess, 
-}: { 
-  onSuccess: (photo: Photo) => void, 
+// Auth Modal Component
+function AuthModal({
+  mode,
+  onClose,
+  onSuccess,
+  onSwitchMode,
+  token,
+}: {
+  mode: 'login' | 'register';
+  onClose: () => void;
+  onSuccess: (user: User, token: string) => void;
+  onSwitchMode: () => void;
+  token: string | null;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const endpoint = mode === 'login' ? '/api/login' : '/api/register';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Что-то пошло не так');
+      }
+
+      if (mode === 'register') {
+        // После регистрации нужно автоматически войти
+        const loginRes = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) {
+          throw new Error(loginData.detail || 'Ошибка входа после регистрации');
+        }
+        onSuccess({ username: loginData.username }, loginData.access_token);
+      } else {
+        onSuccess({ username: data.username }, data.access_token);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative bg-[#111] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+      >
+        <div className="p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 className="text-2xl font-bold">
+              {mode === 'login' ? 'Вход' : 'Регистрация'}
+            </h3>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
+                Никнейм
+              </label>
+              <input
+                type="text"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
+                placeholder="Придумайте никнейм"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                minLength={3}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">
+                Пароль
+              </label>
+              <input
+                type="password"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+            </div>
+
+            {error && (
+              <p className="text-red-500 text-sm">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl font-bold bg-orange-600 text-white hover:bg-orange-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <><Loader2 className="animate-spin" size={20} /> Загрузка...</>
+              ) : (
+                <>{mode === 'login' ? 'Войти' : 'Зарегистрироваться'}</>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-white/40 text-sm">
+              {mode === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
+              <button
+                onClick={onSwitchMode}
+                className="ml-2 text-orange-500 hover:text-orange-400 font-semibold"
+              >
+                {mode === 'login' ? 'Зарегистрироваться' : 'Войти'}
+              </button>
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function UploadForm({
+  token,
+  onSuccess,
+}: {
+  token: string | null;
+  onSuccess: (photo: Photo) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -378,7 +607,7 @@ function UploadForm({
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
     multiple: false
@@ -397,19 +626,21 @@ function UploadForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!preview) return;
+    if (!preview || !token) return;
 
     setIsUploading(true);
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           url: preview,
           title,
           description,
           tags,
-          author: 'Вы'
         })
       });
       const newPhoto = await res.json();
@@ -424,8 +655,8 @@ function UploadForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {!preview ? (
-        <div 
-          {...getRootProps()} 
+        <div
+          {...getRootProps()}
           className={cn(
             "border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all",
             isDragActive ? "border-orange-500 bg-orange-500/5" : "border-white/10 hover:border-white/20"
@@ -442,7 +673,7 @@ function UploadForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="relative aspect-square rounded-2xl overflow-hidden bg-black">
             <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-            <button 
+            <button
               type="button"
               onClick={() => { setFile(null); setPreview(null); }}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center hover:bg-black/70 transition-colors"
@@ -454,8 +685,8 @@ function UploadForm({
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Название</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
                 placeholder="Назовите ваш шедевр"
                 value={title}
@@ -466,7 +697,7 @@ function UploadForm({
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Описание</label>
-              <textarea 
+              <textarea
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-600/50 h-24 resize-none"
                 placeholder="Расскажите историю этого фото..."
                 value={description}
@@ -477,15 +708,15 @@ function UploadForm({
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-white/30 mb-2">Теги</label>
               <div className="flex gap-2 mb-3">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-600/50"
                   placeholder="Добавить тег..."
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 />
-                <button 
+                <button
                   type="button"
                   onClick={addTag}
                   className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center hover:bg-white/10"
@@ -509,14 +740,14 @@ function UploadForm({
       )}
 
       <div className="flex gap-4 pt-4">
-        <button 
+        <button
           type="button"
           onClick={() => { setFile(null); setPreview(null); }}
           className="flex-1 py-3 rounded-xl font-bold bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
         >
           Отмена
         </button>
-        <button 
+        <button
           type="submit"
           disabled={!preview || isUploading}
           className="flex-[2] py-3 rounded-xl font-bold bg-orange-600 text-white hover:bg-orange-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
