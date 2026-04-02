@@ -1,0 +1,142 @@
+# Doxyfile для проекта PhotoBank
+# Документация для TypeScript/React кода
+
+# Основные настройки
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "PhotoBank"
+PROJECT_NUMBER         = "1.0.0"
+PROJECT_BRIEF          = "Фотобанк - платформа для публикации и обмена фотографиями"
+PROJECT_LOGO           = ""
+
+# Вывод документации
+OUTPUT_DIRECTORY       = "docs/doxygen"
+CREATE_SUBDIRS         = NO
+HTML_OUTPUT            = "html"
+LATEX_OUTPUT           = "latex"
+XML_OUTPUT             = "xml"
+
+# Генерация HTML
+GENERATE_HTML          = YES
+HTML_COLORSTYLE        = LIGHT
+HTML_DYNAMIC_MENUS     = YES
+HTML_EXTRA_STYLESHEET  = ""
+
+# Генерация LaTeX
+GENERATE_LATEX         = NO
+
+# Генерация XML (для внешних инструментов)
+GENERATE_XML           = YES
+
+# Исходный код
+INPUT                  = "src" \
+                         "backend"
+INPUT_ENCODING         = UTF-8
+FILE_PATTERNS          = *.ts \
+                         *.tsx \
+                         *.js \
+                         *.jsx \
+                         *.py
+RECURSIVE              = YES
+EXCLUDE                = ""
+EXCLUDE_SYMLINKS       = NO
+EXCLUDE_PATTERNS       = *.test.ts \
+                         *.test.tsx \
+                         *.spec.ts \
+                         *.spec.tsx \
+                         __pycache__ \
+                         *.pyc \
+                         requirements.txt
+EXCLUDE_SYMBOLS        = ""
+
+# Парсинг кода
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_PRIV_VIRTUAL   = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+EXTRACT_LOCAL_METHODS  = YES
+EXTRACT_ANON_NSPACES   = NO
+EXTRACT_FUNCTIONS      = YES
+EXTRACT_CONSTANTS      = YES
+
+# Настройки для JavaScript/TypeScript
+OPTIMIZE_OUTPUT_FOR_C  = NO
+OPTIMIZE_OUTPUT_JAVA   = NO
+OPTIMIZE_OUTPUT_VHDL   = NO
+OPTIMIZE_OUTPUT_SLICE  = NO
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = NO
+MULTILINE_CPP_IS_BRIEF = NO
+
+# Включить парсинг всех функций
+INLINE_INHERITED_MEMB  = YES
+IF_SET_SOURCE_PATH     = YES
+
+# Настройки препроцессора
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = "React" \
+                         "JSX" \
+                         "useEffect" \
+                         "useState" \
+                         "useCallback" \
+                         "useContext" \
+                         "useMemo" \
+                         "useRef"
+
+# Типы файлов
+FILE_VERSION_FILTER    = ""
+USE_MDFILE_AS_MAINPAGE = NO
+
+# Отношения между элементами
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+STRIP_CODE_COMMENTS    = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+REFERENCES_LINK_SOURCE = YES
+
+# Диаграммы
+HAVE_DOT               = NO
+
+# Предупреждения
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+WARN_FORMAT            = "$file:$line: $text"
+WARN_LOGFILE           = "warnings.log"
+
+# Алиасы для кастомных тегов
+ALIASES                = "reactcomponent=\par React Component\n"
+ALIASES               += "hook=\par React Hook\n"
+ALIASES               += "props=\par Properties\n"
+ALIASES               += "function=\par Function\n"
+ALIASES               += "method=\par Method\n"
+
+# Настройки для Markdown
+MARKDOWN_SUPPORT       = YES
+TOC_INCLUDE_HEADINGS   = 5
+
+# Поиск
+SEARCHENGINE           = YES
+SERVER_BASED_SEARCH    = NO
+EXTERNAL_SEARCH        = NO
+
+# Дополнительные настройки для TypeScript
+EXTENSION_MAPPING      = ts=C++ \
+                         tsx=C++ \
+                         js=C++ \
+                         jsx=C++ \
+                         py=Python
+
+# Показывать приватные члены
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+HIDE_FRIEND_COMPOUNDS  = NO
+HIDE_IN_BODY_DOCS      = NO
+
+# Включая всё
+INTERNAL_DOCS          = YES
+CASE_SENSE_NAMES       = NO

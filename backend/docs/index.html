@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Документация PhotoBank Backend API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .endpoint {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            border-radius: 3px;
+        }
+        .method {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .get { background-color: #2ecc71; color: white; }
+        .post { background-color: #3498db; color: white; }
+        .put { background-color: #f39c12; color: white; }
+        .delete { background-color: #e74c3c; color: white; }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .param {
+            font-weight: bold;
+            color: #8e44ad;
+        }
+        .returns {
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .requires {
+            font-weight: bold;
+            color: #e67e22;
+        }
+        nav {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        nav a:hover {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Документация PhotoBank Backend API</h1>
+            <p>REST API для фотобанка</p>
+            <p>Версия: 1.0.0</p>
+        </header>
+        
+        <nav>
+            <a href="#overview">Обзор</a>
+            <a href="#auth">Авторизация</a>
+            <a href="#images">Изображения</a>
+            <a href="#favorites">Избранное</a>
+            <a href="#models">Модели данных</a>
+        </nav>
+        
+        <div class="section" id="overview">
+            <h2>Обзор</h2>
+            <p>FastAPI приложение, предоставляющее REST API для фотобанка:</p>
+            <ul>
+                <li>Регистрация и авторизация пользователей (JWT)</li>
+                <li>CRUD операции для изображений</li>
+                <li>Управление избранными фотографиями</li>
+                <li>Поиск и фильтрация изображений</li>
+            </ul>
+        </div>
+        
+        <div class="section" id="auth">
+            <h2>Авторизация</h2>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> <code>/register</code>
+                <h3>Регистрация нового пользователя</h3>
+                <p>Создаёт нового пользователя в системе с хешированием пароля. Проверяет уникальность имени и минимальную длину пароля.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">user_data:UserCreate</span> - Данные для регистрации</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">UserResponse</span> - Данные созданного пользователя</p>
+                
+                <h4>Пример:</h4>
+                <pre>POST /register
+{
+    "username": "john",
+    "password": "secret123"
+}</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> <code>/login</code>
+                <h3>Авторизация пользователя</h3>
+                <p>Проверяет учётные данные и выдаёт JWT токен.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">user_data:UserLogin</span> - Данные для входа</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">Token</span> - JWT токен доступа</p>
+                
+                <h4>Пример:</h4>
+                <pre>POST /login
+{
+    "username": "john",
+    "password": "secret123"
+}
+# Response: {
+    "access_token": "eyJ...",
+    "token_type": "bearer",
+    "username": "john"
+}</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <code>/me</code>
+                <h3>Получение данных текущего пользователя</h3>
+                <p>Возвращает информацию об авторизованном пользователе. Требует авторизации.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">UserResponse</span> - Данные пользователя</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>GET /me
+Authorization: Bearer eyJ...</pre>
+            </div>
+        </div>
+        
+        <div class="section" id="images">
+            <h2>Изображения</h2>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <code>/images</code>
+                <h3>Получение списка изображений</h3>
+                <p>Возвращает все изображения или фильтрует по поисковому запросу. Для авторизованных пользователей показывает статус "в избранном".</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">search:Optional[str]</span> - Поисковый запрос (опционально)</li>
+                    <li><span class="param">current_user:Optional[str]</span> - Имя текущего пользователя (опционально)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">List[Image]</span> - Список изображений</p>
+                
+                <h4>Пример:</h4>
+                <pre>GET /images
+GET /images?search=горы</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> <code>/upload</code>
+                <h3>Загрузка нового изображения</h3>
+                <p>Создаёт новую фотографию в базе данных. Требует обязательной авторизации.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">image_data:ImageCreate</span> - Данные изображения</li>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">Image</span> - Созданное изображение</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>POST /upload
+Authorization: Bearer eyJ...
+{
+    "url": "https://...",
+    "title": "Фото",
+    "tags": ["tag1"]
+}</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method delete">DELETE</span> <code>/images/{image_id}</code>
+                <h3>Удаление изображения</h3>
+                <p>Удаляет фотографию из базы данных. Только владелец может удалить своё изображение.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">image_id:str</span> - ID изображения</li>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">dict</span> - Сообщение об успешном удалении</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>DELETE /images/123
+Authorization: Bearer eyJ...</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method put">PUT</span> <code>/images/{image_id}</code>
+                <h3>Обновление изображения</h3>
+                <p>Обновляет название, описание или теги изображения. Только владелец может редактировать своё изображение.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">image_id:str</span> - ID изображения</li>
+                    <li><span class="param">image_data:ImageUpdate</span> - Данные для обновления</li>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">Image</span> - Обновлённое изображение</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>PUT /images/123
+Authorization: Bearer eyJ...
+{
+    "title": "Новое название",
+    "tags": ["new"]
+}</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <code>/user/{username}/images</code>
+                <h3>Получение изображений конкретного пользователя</h3>
+                <p>Возвращает все фотографии указанного пользователя.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">username:str</span> - Имя пользователя</li>
+                    <li><span class="param">current_user:Optional[str]</span> - Текущий пользователь (опционально)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">List[Image]</span> - Список изображений пользователя</p>
+                
+                <h4>Пример:</h4>
+                <pre>GET /user/admin/images</pre>
+            </div>
+        </div>
+        
+        <div class="section" id="favorites">
+            <h2>Избранное</h2>
+            
+            <div class="endpoint">
+                <span class="method post">POST</span> <code>/like</code>
+                <h3>Добавление/удаление изображения в избранное</h3>
+                <p>Управляет списком избранных фотографий пользователя.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">action:LikeAction</span> - Действие (ID фото и статус)</li>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">dict</span> - Сообщение об успешном выполнении</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>POST /like
+Authorization: Bearer eyJ...
+{
+    "image_id": "123",
+    "is_liked": true
+}</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <code>/favorites</code>
+                <h3>Получение списка избранных изображений</h3>
+                <p>Возвращает все фотографии, добавленные в избранное пользователем.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">current_user:str</span> - Имя пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">List[Image]</span> - Список избранных изображений</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>GET /favorites
+Authorization: Bearer eyJ...</pre>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method get">GET</span> <code>/user/{username}/favorites</code>
+                <h3>Получение избранных фотографий пользователя</h3>
+                <p>Пользователь может просматривать только свои избранные фото.</p>
+                
+                <h4>Параметры:</h4>
+                <ul>
+                    <li><span class="param">username:str</span> - Имя пользователя</li>
+                    <li><span class="param">current_user:str</span> - Имя текущего пользователя (из токена)</li>
+                </ul>
+                
+                <h4>Возвращает:</h4>
+                <p><span class="returns">List[Image]</span> - Список избранных изображений</p>
+                
+                <h4>Требует:</h4>
+                <p><span class="requires">Authorization header</span> с JWT токеном</p>
+                
+                <h4>Пример:</h4>
+                <pre>GET /user/john/favorites
+Authorization: Bearer eyJ...</pre>
+            </div>
+        </div>
+        
+        <div class="section" id="models">
+            <h2>Модели данных</h2>
+            
+            <h3>UserCreate</h3>
+            <p>Модель для регистрации нового пользователя</p>
+            <ul>
+                <li><code>username: str</code> - Имя пользователя (мин. 3 символа)</li>
+                <li><code>password: str</code> - Пароль пользователя (мин. 6 символов)</li>
+            </ul>
+            
+            <h3>UserLogin</h3>
+            <p>Модель для входа пользователя</p>
+            <ul>
+                <li><code>username: str</code> - Имя пользователя</li>
+                <li><code>password: str</code> - Пароль пользователя</li>
+            </ul>
+            
+            <h3>UserResponse</h3>
+            <p>Модель ответа с данными пользователя</p>
+            <ul>
+                <li><code>username: str</code> - Имя пользователя</li>
+            </ul>
+            
+            <h3>Token</h3>
+            <p>Модель JWT токена</p>
+            <ul>
+                <li><code>access_token: str</code> - JWT токен доступа</li>
+                <li><code>token_type: str</code> - Тип токена (bearer)</li>
+                <li><code>username: str</code> - Имя пользователя</li>
+            </ul>
+            
+            <h3>Image</h3>
+            <p>Модель изображения</p>
+            <ul>
+                <li><code>id: str</code> - Уникальный идентификатор</li>
+                <li><code>url: str</code> - URL изображения</li>
+                <li><code>title: str</code> - Название фотографии</li>
+                <li><code>description: str</code> - Описание фотографии</li>
+                <li><code>author: str</code> - Имя автора</li>
+                <li><code>author_id: str</code> - ID автора</li>
+                <li><code>tags: List[str]</code> - Список тегов</li>
+                <li><code>publishDate: str</code> - Дата публикации (ISO 8601)</li>
+                <li><code>isLiked: bool</code> - Статус "в избранном"</li>
+            </ul>
+            
+            <h3>ImageCreate</h3>
+            <p>Модель для создания нового изображения</p>
+            <ul>
+                <li><code>url: str</code> - URL изображения</li>
+                <li><code>title: str</code> - Название фотографии</li>
+                <li><code>description: str</code> - Описание фотографии</li>
+                <li><code>tags: List[str]</code> - Список тегов</li>
+            </ul>
+            
+            <h3>ImageUpdate</h3>
+            <p>Модель для обновления изображения</p>
+            <ul>
+                <li><code>title: Optional[str]</code> - Новое название (опционально)</li>
+                <li><code>description: Optional[str]</code> - Новое описание (опционально)</li>
+                <li><code>tags: Optional[List[str]]</code> - Новые теги (опционально)</li>
+            </ul>
+            
+            <h3>LikeAction</h3>
+            <p>Модель действия "Избранное"</p>
+            <ul>
+                <li><code>image_id: str</code> - ID изображения</li>
+                <li><code>is_liked: bool</code> - Статус (True - добавить, False - удалить)</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

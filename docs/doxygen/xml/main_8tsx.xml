@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.16.1" xml:lang="en-US">
+  <compounddef id="main_8tsx" kind="file" language="C++">
+    <compoundname>main.tsx</compoundname>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline><highlight class="normal">import<sp/>{<sp/>StrictMode<sp/>}<sp/>from<sp/>&apos;react&apos;;</highlight></codeline>
+<codeline><highlight class="normal">import<sp/>{<sp/>createRoot<sp/>}<sp/>from<sp/>&apos;react-dom/client&apos;;</highlight></codeline>
+<codeline><highlight class="normal">import<sp/>App<sp/>from<sp/>&apos;./App.tsx&apos;;</highlight></codeline>
+<codeline><highlight class="normal">import<sp/>&apos;./index.css&apos;;</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">/**</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@file<sp/>main.tsx</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@brief<sp/>Точка<sp/>входа<sp/>приложения<sp/>Photobank</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@details<sp/>Инициализирует<sp/>React-приложение<sp/>и<sp/>рендерит<sp/>корневой<sp/>компонент<sp/>App</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/></highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@module<sp/>main</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*/</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">/**</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@brief<sp/>Корневой<sp/>элемент<sp/>DOM<sp/>для<sp/>рендеринга<sp/>приложения</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@details<sp/>Получает<sp/>элемент<sp/>с<sp/>id=&quot;root&quot;<sp/>из<sp/>index.html</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*/</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">/**</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@brief<sp/>Инициализация<sp/>React-приложения</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@details<sp/>Создаёт<sp/>root<sp/>для<sp/>ReactDOM<sp/>и<sp/>рендерит<sp/>компонент<sp/>App<sp/>в<sp/>StrictMode</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/></highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@example</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>//<sp/>В<sp/>index.html<sp/>должен<sp/>быть<sp/>элемент:</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>//<sp/>&lt;div<sp/>id=&quot;root&quot;&gt;&lt;/div&gt;</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*/</highlight></codeline>
+<codeline><highlight class="normal">createRoot(document.getElementById(&apos;root&apos;)!).render(</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/>&lt;StrictMode&gt;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/><sp/><sp/>&lt;App<sp/>/&gt;</highlight></codeline>
+<codeline><highlight class="normal"><sp/><sp/>&lt;/StrictMode&gt;,</highlight></codeline>
+<codeline><highlight class="normal">);</highlight></codeline>
+    </programlisting>
+    <location file="src/main.tsx"/>
+  </compounddef>
+</doxygen>

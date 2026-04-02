@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.16.1" xml:lang="en-US">
+  <compound refid="_app_8tsx" kind="file"><name>App.tsx</name>
+  </compound>
+  <compound refid="main_8tsx" kind="file"><name>main.tsx</name>
+  </compound>
+  <compound refid="index_8tsx" kind="file"><name>index.tsx</name>
+  </compound>
+  <compound refid="dir_d1fc3cbd97cb772b87fa57d8dd8469cd" kind="dir"><name>src/pages</name>
+  </compound>
+  <compound refid="dir_68267d1309a1af8e8297ef4c3efbcdba" kind="dir"><name>src</name>
+  </compound>
+</doxygenindex>

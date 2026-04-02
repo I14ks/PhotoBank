@@ -26,8 +26,24 @@ import { twMerge } from 'tailwind-merge';
 import { useDropzone } from 'react-dropzone';
 
 // ==================== Translations ====================
+
+/**
+ * @brief Тип поддерживаемых языков интерфейса
+ * @details Используется для переключения между русским и английским языком
+ */
 type Lang = 'ru' | 'en';
 
+/**
+ * @brief Объект с переводами интерфейса приложения
+ * @details Содержит все текстовые строки для русского и английского языков
+ * 
+ * @property {Object} ru - Переводы для русского языка
+ * @property {Object} en - Переводы для английского языка
+ * 
+ * @example
+ * translations.ru.appTitle // 'ФОТОБАНК'
+ * translations.en.searchPlaceholder // 'Search for inspiration...'
+ */
 const translations = {
   ru: {
     appTitle: 'ФОТОБАНК',
@@ -168,6 +184,17 @@ const translations = {
 };
 
 // ==================== Context ====================
+
+/**
+ * @brief Интерфейс контекста приложения
+ * @details Содержит состояние языка, темы и функцию перевода
+ * 
+ * @property {Lang} lang - Текущий выбранный язык
+ * @property {Function} setLang - Функция установки языка
+ * @property {'light'|'dark'} theme - Текущая тема оформления
+ * @property {Function} setTheme - Функция установки темы
+ * @property {Function} t - Функция перевода по ключу
+ */
 interface AppContextType {
   lang: Lang;
   setLang: (lang: Lang) => void;
@@ -176,8 +203,20 @@ interface AppContextType {
   t: (key: keyof typeof translations.ru) => string;
 }
 
+/**
+ * @brief Контекст приложения для глобального доступа к настройкам
+ * @details Предоставляет доступ к языку, теме и функции перевода во всех компонентах
+ */
 const AppContext = createContext<AppContextType | null>(null);
 
+/**
+ * @brief Хук для доступа к контексту приложения
+ * @returns {AppContextType} Значение контекста приложения
+ * @throws {Error} Если используется вне AppContextProvider
+ * 
+ * @example
+ * const { lang, theme, t } = useAppContext();
+ */
 function useAppContext() {
   const context = useContext(AppContext);
   if (!context) throw new Error('useAppContext must be used within AppContextProvider');
@@ -185,11 +224,37 @@ function useAppContext() {
 }
 
 // ==================== Utility ====================
+
+/**
+ * @brief Утилита для объединения CSS-классов
+ * @details Объединяет clsx для условных классов и twMerge для Tailwind CSS
+ * 
+ * @param {...ClassValue} inputs - Массив значений классов для объединения
+ * @returns {string} Объединённая строка CSS-классов
+ * 
+ * @example
+ * cn("base-class", isActive && "active-class") // "base-class active-class"
+ */
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 // ==================== Interfaces ====================
+
+/**
+ * @brief Интерфейс фото в приложении
+ * @details Описывает структуру данных фотографии
+ * 
+ * @property {string} id - Уникальный идентификатор фотографии
+ * @property {string} url - URL изображения
+ * @property {string} title - Название фотографии
+ * @property {string} description - Описание фотографии
+ * @property {string} author - Имя автора
+ * @property {string} author_id - ID автора (для проверки прав)
+ * @property {string[]} tags - Массив тегов для категоризации
+ * @property {string} publishDate - Дата публикации в формате ISO
+ * @property {boolean} isLiked - Статус "в избранном" для текущего пользователя
+ */
 interface Photo {
   id: string;
   url: string;
@@ -202,13 +267,42 @@ interface Photo {
   isLiked: boolean;
 }
 
+/**
+ * @brief Интерфейс пользователя
+ * @details Содержит базовую информацию о пользователе
+ * 
+ * @property {string} username - Имя пользователя (никнейм)
+ */
 interface User {
   username: string;
 }
 
+/**
+ * @brief Тип текущей страницы приложения
+ * @details Определяет, какая страница отображается
+ * 
+ * @value {'home'} - Главная страница с лентой фотографий
+ * @value {'favorites'} - Страница избранных фотографий
+ */
 type Page = 'home' | 'favorites';
 
 // ==================== Main App ====================
+
+/**
+ * @brief Главный компонент приложения Photobank
+ * @details Основной контейнер приложения, управляющий состоянием, навигацией и всеми основными функциями:
+ * - Управление языком и темой оформления
+ * - Авторизация и регистрация пользователей
+ * - Загрузка, просмотр и удаление фотографий
+ * - Поиск и фильтрация фотографий
+ * - Добавление в избранное
+ * 
+ * @returns {JSX.Element} Основной интерфейс приложения с хедером, контентом и футером
+ * 
+ * @example
+ * // Используется в index.tsx
+ * <App />
+ */
 export default function App() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lang') as Lang) || 'ru');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('theme') as 'light' | 'dark') || 'dark');
@@ -229,11 +323,19 @@ export default function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
 
+  /**
+   * @brief Эффект для сохранения языка в localStorage
+   * @details Устанавливает атрибут lang для HTML элемента
+   */
   useEffect(() => {
     localStorage.setItem('lang', lang);
     document.documentElement.lang = lang;
   }, [lang]);
 
+  /**
+   * @brief Эффект для применения темы оформления
+   * @details Добавляет/удаляет класс 'light' для HTML элемента
+   */
   useEffect(() => {
     localStorage.setItem('theme', theme);
     if (theme === 'light') {
@@ -243,10 +345,24 @@ export default function App() {
     }
   }, [theme]);
 
+  /**
+   * @brief Функция перевода по ключу
+   * @details Возвращает локализованную строку для текущего языка
+   * 
+   * @param {keyof typeof translations.ru} key - Ключ перевода
+   * @returns {string} Переведённая строка
+   * 
+   * @example
+   * t('appTitle') // 'ФОТОБАНК' или 'PHOTOBANK'
+   */
   const t = useCallback((key: keyof typeof translations.ru) => {
     return translations[lang][key] || key;
   }, [lang]);
 
+  /**
+   * @brief Эффект для восстановления сессии пользователя
+   * @details Загружает токен и данные пользователя из localStorage при старте
+   */
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
@@ -256,40 +372,96 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * @brief Загрузка списка фотографий с сервера
+   * @details Выполняет GET запрос к API с опциональным поисковым запросом
+   * 
+   * @param {string} query - Поисковый запрос (пустая строка для всех фото)
+   * 
+   * @example
+   * fetchPhotos() // загрузить все фото
+   * fetchPhotos('nature') // загрузить фото по запросу
+   */
   const fetchPhotos = useCallback(async (query = '') => {
     setIsLoading(true);
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
       const res = await fetch(`/api/images${query ? `?search=${encodeURIComponent(query)}` : ''}`, { headers });
+      if (!res.ok) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       setPhotos(data);
       const liked = new Set(data.filter((p: Photo) => p.isLiked).map((p: Photo) => p.id));
       setLikedPhotos(liked);
     } catch (err) {
       console.error('Failed to fetch photos', err);
+      setPhotos([]);
+      setLikedPhotos(new Set());
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
+  /**
+   * @brief Загрузка избранных фотографий пользователя
+   * @details Выполняет GET запрос к API /api/favorites
+   * 
+   * @requires token - Требуется авторизация
+   * 
+   * @example
+   * fetchFavorites()
+   */
   const fetchFavorites = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setPhotos([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const res = await fetch('/api/favorites', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       setPhotos(data);
-      const liked = new Set(data.map((p: Photo) => p.id));
+      const liked = new Set<string>(data.map((p: Photo) => p.id));
       setLikedPhotos(liked);
     } catch (err) {
       console.error('Failed to fetch favorites', err);
+      setPhotos([]);
+      setLikedPhotos(new Set());
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
+  /**
+   * @brief Загрузка фотографий конкретного пользователя
+   * @details Выполняет GET запрос к API /api/user/:username/images
+   * 
+   * @param {string} username - Имя пользователя
+   * 
+   * @example
+   * fetchUserPhotos('john_doe')
+   */
   const fetchUserPhotos = async (username: string) => {
     if (!token) return;
     setIsLoading(true);
@@ -297,17 +469,33 @@ export default function App() {
       const res = await fetch(`/api/user/${username}/images`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        setPhotos([]);
+        setLikedPhotos(new Set());
+        return;
+      }
       setPhotos(data);
-      const liked = new Set(data.filter((p: Photo) => p.isLiked).map((p: Photo) => p.id));
+      const liked = new Set<string>(data.filter((p: Photo) => p.isLiked).map((p: Photo) => p.id));
       setLikedPhotos(liked);
     } catch (err) {
       console.error('Failed to fetch user photos', err);
+      setPhotos([]);
+      setLikedPhotos(new Set());
     } finally {
       setIsLoading(false);
     }
   };
 
+  /**
+   * @brief Эффект для обновления списка фотографий
+   * @details Автоматически вызывает нужную функцию загрузки в зависимости от текущей страницы и фильтра
+   */
   useEffect(() => {
     if (currentPage === 'favorites') {
       fetchFavorites();
@@ -318,6 +506,16 @@ export default function App() {
     }
   }, [currentPage, filterMode, currentUser, searchQuery]);
 
+  /**
+   * @brief Обработчик поиска фотографий
+   * @details Предотвращает стандартное поведение формы и загружает фото по запросу
+   * 
+   * @param {React.FormEvent} e - Событие отправки формы
+   * 
+   * @example
+   * // В форме поиска:
+   * <form onSubmit={handleSearch}>
+   */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setFilterMode('all');
@@ -325,6 +523,13 @@ export default function App() {
     fetchPhotos(searchQuery);
   };
 
+  /**
+   * @brief Обработчик выхода из аккаунта
+   * @details Очищает localStorage, сбрасывает состояние пользователя и избранные фото
+   * 
+   * @example
+   * <button onClick={handleLogout}>Выйти</button>
+   */
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -335,6 +540,16 @@ export default function App() {
     setLikedPhotos(new Set());
   };
 
+  /**
+   * @brief Обработчик успешной авторизации
+   * @details Сохраняет токен и пользователя в localStorage, закрывает модальное окно
+   * 
+   * @param {User} user - Данные пользователя
+   * @param {string} newToken - JWT токен
+   * 
+   * @example
+   * handleAuthSuccess({ username: 'john' }, 'eyJhbGc...')
+   */
   const handleAuthSuccess = (user: User, newToken: string) => {
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(user));
@@ -344,6 +559,15 @@ export default function App() {
     fetchPhotos();
   };
 
+  /**
+   * @brief Удаление фотографии
+   * @details Выполняет DELETE запрос к API и обновляет список фото
+   * 
+   * @param {string} photoId - ID удаляемой фотографии
+   * 
+   * @example
+   * handleDeletePhoto('12345')
+   */
   const handleDeletePhoto = async (photoId: string) => {
     if (!token) return;
     try {
@@ -362,6 +586,19 @@ export default function App() {
     }
   };
 
+  /**
+   * @brief Обновление данных фотографии
+   * @details Выполняет PUT запрос к API для обновления названия, описания и тегов
+   * 
+   * @param {string} photoId - ID обновляемой фотографии
+   * @param {Object} updates - Объект с обновлениями
+   * @param {string} [updates.title] - Новое название
+   * @param {string} [updates.description] - Новое описание
+   * @param {string[]} [updates.tags] - Новые теги
+   * 
+   * @example
+   * handleUpdatePhoto('123', { title: 'New Title', tags: ['nature'] })
+   */
   const handleUpdatePhoto = async (photoId: string, updates: { title?: string; description?: string; tags?: string[] }) => {
     if (!token) return;
     try {
@@ -386,6 +623,17 @@ export default function App() {
     }
   };
 
+  /**
+   * @brief Переключение статуса "в избранном"
+   * @details Выполняет оптимистичное обновление UI и отправляет POST запрос к API
+   * Если пользователь не авторизован - открывает модальное окно авторизации
+   * 
+   * @param {string} photoId - ID фотографии
+   * @param {boolean} currentIsLiked - Текущий статус
+   * 
+   * @example
+   * handleLikeToggle('123', false) // добавить в избранное
+   */
   const handleLikeToggle = async (photoId: string, currentIsLiked: boolean) => {
     if (!token) {
       setIsAuthModalOpen(true);
@@ -1008,6 +1256,38 @@ export default function App() {
 }
 
 // ==================== Photo Card Component ====================
+
+/**
+ * @brief Компонент карточки фотографии
+ * @details Отображает превью фотографии с информацией и действиями:
+ * - Название и имя автора
+ * - Кнопки: лайк, скачивание, удаление (если владелец)
+ * - Анимация при наведении с увеличением изображения
+ * - Индикатор избранного
+ * 
+ * @param {Object} props - Пропсы компонента
+ * @param {Photo} props.photo - Объект фотографии для отображения
+ * @param {'light'|'dark'} props.theme - Текущая тема оформления
+ * @param {boolean} props.isLiked - Статус "в избранном"
+ * @param {Function} props.onLike - Обработчик добавления в избранное
+ * @param {Function} props.onClick - Обработчик клика для открытия деталей
+ * @param {Function} props.onDelete - Обработчик удаления фотографии
+ * @param {boolean} props.canDelete - Флаг возможности удаления (владелец ли)
+ * @param {Function} props.t - Функция перевода
+ * 
+ * @returns {JSX.Element} Карточка фотографии с интерактивными элементами
+ * 
+ * @example
+ * <PhotoCard
+ *   photo={photo}
+ *   theme="dark"
+ *   isLiked={false}
+ *   onLike={() => handleLike(photo.id)}
+ *   onClick={() => setSelectedPhoto(photo)}
+ *   canDelete={true}
+ *   t={t}
+ * />
+ */
 function PhotoCard({
   photo,
   theme,
@@ -1089,6 +1369,37 @@ function PhotoCard({
 }
 
 // ==================== Auth Modal Component ====================
+
+/**
+ * @brief Компонент модального окна авторизации/регистрации
+ * @details Предоставляет интерфейс для входа и регистрации пользователей:
+ * - Переключение между режимами login/register
+ * - Валидация формы (мин. 3 символа для имени, 6 для пароля)
+ * - Автоматический вход после регистрации
+ * - Обработка ошибок сервера
+ * 
+ * @param {Object} props - Пропсы компонента
+ * @param {'login'|'register'} props.mode - Текущий режим (вход или регистрация)
+ * @param {Function} props.onClose - Обработчик закрытия модального окна
+ * @param {Function} props.onSuccess - Обработчик успешной авторизации
+ * @param {Function} props.onSwitchMode - Обработчик переключения режима
+ * @param {string|null} props.token - Текущий токен авторизации
+ * @param {'light'|'dark'} props.theme - Текущая тема оформления
+ * @param {Lang} props.lang - Текущий язык интерфейса
+ * 
+ * @returns {JSX.Element} Модальное окно с формой авторизации
+ * 
+ * @example
+ * <AuthModal
+ *   mode="login"
+ *   onClose={() => setIsAuthModalOpen(false)}
+ *   onSuccess={handleAuthSuccess}
+ *   onSwitchMode={() => setAuthMode('register')}
+ *   token={token}
+ *   theme="dark"
+ *   lang="ru"
+ * />
+ */
 function AuthModal({
   mode,
   onClose,
@@ -1247,6 +1558,35 @@ function AuthModal({
 }
 
 // ==================== Upload Form Component ====================
+
+/**
+ * @brief Компонент формы загрузки фотографии
+ * @details Предоставляет полный интерфейс для загрузки новых фотографий:
+ * - Drag-and-drop зона для выбора файла
+ * - Предпросмотр с применением фильтров
+ * - Настройка масштаба (zoom 1x-3x)
+ * - Применение фильтров (grayscale, sepia, contrast, brightness, blur, vintage, cool, warm)
+ * - Ввод названия, описания и тегов
+ * - Обработка canvas для применения фильтров перед загрузкой
+ * 
+ * @param {Object} props - Пропсы компонента
+ * @param {string|null} props.token - Токен авторизации для API запроса
+ * @param {Function} props.onSuccess - Обработчик успешной загрузки
+ * @param {'light'|'dark'} props.theme - Текущая тема оформления
+ * @param {Lang} props.lang - Текущий язык интерфейса
+ * @param {Function} props.t - Функция перевода
+ * 
+ * @returns {JSX.Element} Форма загрузки с предпросмотром и настройками
+ * 
+ * @example
+ * <UploadForm
+ *   token={token}
+ *   onSuccess={(newPhoto) => setPhotos([newPhoto, ...photos])}
+ *   theme="dark"
+ *   lang="ru"
+ *   t={t}
+ * />
+ */
 function UploadForm({
   token,
   onSuccess,
@@ -1557,6 +1897,36 @@ function UploadForm({
 }
 
 // ==================== Edit Modal Component ====================
+
+/**
+ * @brief Компонент модального окна редактирования фотографии
+ * @details Предоставляет интерфейс для редактирования существующих фотографий:
+ * - Изменение названия
+ * - Изменение описания
+ * - Управление тегами (добавление/удаление)
+ * - Предпросмотр фотографии
+ * - Только владелец может редактировать
+ * 
+ * @param {Object} props - Пропсы компонента
+ * @param {Photo} props.photo - Объект фотографии для редактирования
+ * @param {Function} props.onClose - Обработчик закрытия модального окна
+ * @param {Function} props.onSave - Обработчик сохранения изменений
+ * @param {'light'|'dark'} props.theme - Текущая тема оформления
+ * @param {Lang} props.lang - Текущий язык интерфейса
+ * @param {Function} props.t - Функция перевода
+ * 
+ * @returns {JSX.Element} Модальное окно с формой редактирования
+ * 
+ * @example
+ * <EditModal
+ *   photo={editingPhoto}
+ *   onClose={() => setIsEditModalOpen(false)}
+ *   onSave={handleUpdatePhoto}
+ *   theme="dark"
+ *   lang="ru"
+ *   t={t}
+ * />
+ */
 function EditModal({
   photo,
   onClose,

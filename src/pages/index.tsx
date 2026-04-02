@@ -5,8 +5,26 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import ThemedImage from '@theme/ThemedImage';
 
+/**
+ * @file index.tsx
+ * @brief Главная страница документации Docusaurus
+ * @details Предоставляет навигацию к документации разработчика и пользователя
+ * 
+ * @module pages/index
+ */
+
+/**
+ * @brief Компонент заголовка главной страницы
+ * @details Отображает hero-секцию с названием проекта и кнопками навигации
+ * 
+ * @returns {JSX.Element} Hero-секция с заголовком и кнопками
+ * 
+ * @example
+ * // Используется в компоненте Home
+ * <HomepageHeader />
+ */
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
   return (
     <header className={clsx('hero hero--primary')}>
       <div className="container">
@@ -29,8 +47,18 @@ function HomepageHeader() {
   );
 }
 
+/**
+ * @brief Главный компонент страницы Home
+ * @details Основная страница документации с навигацией для разработчиков и пользователей
+ * 
+ * @returns {JSX.Element} Страница с hero-секцией и двумя разделами навигации
+ * 
+ * @example
+ * // Экспортируется как default компонент страницы
+ * export default function Home()
+ */
 export default function Home(): JSX.Element {
-  const {siteConfig} = useDocusaurusContext();
+  const { siteConfig } = useDocusaurusContext();
   return (
     <Layout
       title={`Добро пожаловать`}
@@ -42,7 +70,7 @@ export default function Home(): JSX.Element {
             <div className="col col--6 padding--md">
               <h2>👨‍💻 Разработчикам</h2>
               <p>
-                Архитектура, API, генерация документации из кода и руководство 
+                Архитектура, API, генерация документации из кода и руководство
                 по развёртыванию.
               </p>
               <Link
